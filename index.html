@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>골든벨 버저</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --navy: #1b2a4a;
+    --navy-soft: #2c3e66;
+    --gold: #f5b82e;
+    --red: #d7263d;
+    --green: #1e9e63;
+    --mist: #aeb9d3;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  [hidden] { display: none !important; }
+  .screen { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 18px; }
+
+  #offline, #configError {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    background: var(--red); color: var(--white); text-align: center;
+    padding: 10px; font-weight: 600; font-size: 15px;
+  }
+
+  /* 입장 화면 */
+  #join { justify-content: center; max-width: 420px; margin: 0 auto; }
+  #join h1 { font-size: 34px; margin: 0; color: var(--gold); letter-spacing: -0.02em; }
+  #join p { margin: 0; color: var(--mist); }
+  #name {
+    width: 100%; font: inherit; font-size: 22px; padding: 16px; border-radius: 14px;
+    border: 2px solid var(--navy-soft); background: var(--navy-soft); color: var(--white); text-align: center;
+  }
+  #name:focus { outline: none; border-color: var(--gold); }
+  #enter {
+    width: 100%; font: inherit; font-size: 20px; font-weight: 700; padding: 16px;
+    border: 0; border-radius: 14px; background: var(--gold); color: var(--navy);
+  }
+
+  /* 플레이 화면 */
+  #play { max-width: 520px; margin: 0 auto; }
+  #bar { width: 100%; display: flex; justify-content: space-between; align-items: baseline; color: var(--mist); font-size: 16px; }
+  #who { color: var(--white); font-weight: 700; font-size: 20px; }
+  #myScore b { color: var(--gold); font-size: 22px; }
+  #msg { min-height: 28px; font-size: 19px; font-weight: 600; text-align: center; }
+
+  #buzz {
+    width: min(76vw, 44vh); height: min(76vw, 44vh);
+    border-radius: 50%; border: 0; font: inherit; font-size: 40px; font-weight: 800;
+    letter-spacing: -0.02em; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    transition: transform 0.06s, background 0.15s;
+    box-shadow: 0 10px 0 rgba(0, 0, 0, 0.28);
+  }
+  #buzz[data-state="closed"] { background: var(--navy-soft); color: var(--mist); box-shadow: 0 10px 0 rgba(0,0,0,0.2); }
+  #buzz[data-state="open"]   { background: var(--red); color: var(--white); }
+  #buzz[data-state="open"]:active { transform: translateY(8px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.28); }
+  #buzz[data-state="win"]    { background: var(--green); color: var(--white); }
+  #buzz[data-state="lost"]   { background: var(--gold); color: var(--navy); }
+  #buzz[data-state="out"]    { background: var(--navy-soft); color: var(--mist); }
+
+  #boardWrap { width: 100%; margin-top: 6px; }
+  #boardWrap h2 { font-size: 15px; font-weight: 600; color: var(--mist); margin: 0 0 8px; }
+  #board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  #board li { display: flex; justify-content: space-between; background: var(--navy-soft); padding: 9px 14px; border-radius: 10px; font-size: 16px; }
+  #board li.me { outline: 2px solid var(--gold); }
+  #board li span:last-child { font-weight: 700; color: var(--gold); }
+</style>
+</head>
+<body>
+
+<div id="configError" hidden>config.js에 Firebase 설정값을 먼저 넣어줘야 해요.</div>
+<div id="offline" hidden>연결이 끊겼어요. 다시 연결하는 중...</div>
+
+<main id="join" class="screen">
+  <h1>골든벨 퀴즈</h1>
+  <p>이름을 입력하고 입장하세요</p>
+  <input id="name" maxlength="12" placeholder="이름" autocomplete="off" enterkeyhint="go">
+  <button id="enter">입장</button>
+</main>
+
+<main id="play" class="screen" hidden>
+  <div id="bar">
+    <span id="who"></span>
+    <span id="myScore">내 점수 <b>0</b></span>
+  </div>
+  <div id="msg"></div>
+  <button id="buzz" data-state="closed" disabled>대기 중</button>
+  <div id="boardWrap">
+    <h2>현재 순위</h2>
+    <ol id="board"></ol>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("여기에") === 0) {
+    $("configError").hidden = false;
+    return;
+  }
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // 기기마다 고유 id를 만들어 새로고침해도 같은 사람으로 인식
+  let uid = localStorage.getItem("qb_uid");
+  if (!uid) {
+    uid = "p" + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem("qb_uid", uid);
+  }
+  let me = null;      // {id, name}
+  let round = null;
+  let players = {};
+
+  // 연결 상태 + 접속 표시
+  db.ref(".info/connected").on("value", (s) => {
+    const on = s.val() === true;
+    $("offline").hidden = on;
+    if (on && me) markOnline();
+  });
+  function markOnline() {
+    const ref = db.ref("players/" + me.id + "/online");
+    ref.onDisconnect().set(false);
+    ref.set(true);
+  }
+
+  function join(name) {
+    me = { id: uid, name: name };
+    localStorage.setItem("qb_name", name);
+    const pRef = db.ref("players/" + me.id);
+    pRef.child("name").set(name);
+    pRef.child("score").transaction((s) => s || 0);
+    markOnline();
+    $("who").textContent = name;
+    $("join").hidden = true;
+    $("play").hidden = false;
+    render();
+  }
+
+  $("enter").addEventListener("click", () => {
+    const name = $("name").value.trim();
+    if (name) join(name);
+  });
+  $("name").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("enter").click();
+  });
+  const saved = localStorage.getItem("qb_name");
+  if (saved) $("name").value = saved;
+
+  // 라운드 상태 구독
+  db.ref("round").on("value", (s) => { round = s.val(); render(); });
+  db.ref("players").on("value", (s) => {
+    players = s.val() || {};
+    // 진행자가 내보낸 경우 입장 화면으로 복귀
+    if (me && !players[me.id]) {
+      me = null;
+      $("play").hidden = true;
+      $("join").hidden = false;
+      return;
+    }
+    render();
+  });
+
+  function render() {
+    if (!me) return;
+    const r = round || { state: "closed" };
+    const excluded = r.excluded && r.excluded[me.id];
+    let state, label, text;
+    if (r.state === "open") {
+      if (excluded) { state = "out"; label = "기회 소진"; text = "이번 문제는 이미 답변했어요"; }
+      else { state = "open"; label = "누르기!"; text = "문제를 듣고 먼저 누르세요"; }
+    } else if (r.state === "locked" && r.winner) {
+      if (r.winner.id === me.id) { state = "win"; label = "내 차례!"; text = "답을 말해주세요"; }
+      else { state = "lost"; label = "마감"; text = r.winner.name + " 님이 먼저 눌렀어요"; }
+    } else {
+      state = "closed"; label = "대기 중"; text = "진행자가 버저를 열면 켜져요";
+    }
+    const b = $("buzz");
+    b.dataset.state = state;
+    b.textContent = label;
+    b.disabled = state !== "open";
+    $("msg").textContent = text;
+
+    const mine = (players[me.id] && players[me.id].score) || 0;
+    $("myScore").innerHTML = "";
+    $("myScore").append("내 점수 ");
+    const bold = document.createElement("b");
+    bold.textContent = mine;
+    $("myScore").append(bold);
+
+    const arr = Object.entries(players)
+      .map(([id, p]) => ({ id, name: p.name || "?", score: p.score || 0 }))
+      .sort((a, c) => c.score - a.score || a.name.localeCompare(c.name, "ko"))
+      .slice(0, 5);
+    $("board").replaceChildren(...arr.map((p) => {
+      const li = document.createElement("li");
+      if (p.id === me.id) li.className = "me";
+      const n = document.createElement("span"); n.textContent = p.name;
+      const sc = document.createElement("span"); sc.textContent = p.score + "점";
+      li.append(n, sc);
+      return li;
+    }));
+  }
+
+  // 버저: 서버에서 가장 먼저 도착한 요청 1건만 성공
+  function buzz() {
+    if (!me) return;
+    if (navigator.vibrate) navigator.vibrate(30);
+    db.ref("round").transaction((cur) => {
+      if (cur && cur.state === "open" && !(cur.excluded && cur.excluded[me.id])) {
+        cur.state = "locked";
+        cur.winner = { id: me.id, name: me.name };
+        cur.lockedAt = firebase.database.ServerValue.TIMESTAMP;
+        return cur;
+      }
+      return; // 이미 마감됐으면 취소
+    }, function () {}, false);
+  }
+  $("buzz").addEventListener("pointerdown", (e) => {
+    if ($("buzz").dataset.state === "open") { e.preventDefault(); buzz(); }
+  });
+
+  // 저장된 이름이 있으면 자동 입장
+  if (saved) {
+    db.ref("players/" + uid).once("value").then((s) => { if (s.exists()) join(saved); });
+  }
+})();
+</script>
+</body>
+</html>

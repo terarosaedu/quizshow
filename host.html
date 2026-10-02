@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>골든벨 진행자</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --navy: #1b2a4a;
+    --navy-soft: #2c3e66;
+    --gold: #f5b82e;
+    --red: #d7263d;
+    --green: #1e9e63;
+    --mist: #aeb9d3;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--navy); color: var(--white);
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+  [hidden] { display: none !important; }
+  #configError { background: var(--red); padding: 12px; text-align: center; font-weight: 600; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+
+  /* 메인 무대 */
+  #stage {
+    min-height: 360px; border-radius: 24px; background: var(--navy-soft);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px; text-align: center; transition: background 0.2s;
+  }
+  #stage[data-state="open"] { background: var(--red); }
+  #stage[data-state="locked"] { background: var(--gold); color: var(--navy); }
+  #stageLabel { font-size: 22px; font-weight: 600; opacity: 0.85; }
+  #stageMain { font-size: clamp(56px, 11vw, 150px); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; word-break: keep-all; }
+  #stageSub { font-size: 20px; opacity: 0.85; min-height: 28px; }
+
+  #controls { grid-column: 1; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  button {
+    font: inherit; font-weight: 700; font-size: 18px; padding: 14px 22px; border: 0; border-radius: 12px;
+    background: var(--navy-soft); color: var(--white); cursor: pointer;
+  }
+  button:hover { filter: brightness(1.12); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; filter: none; }
+  button.open { background: var(--red); }
+  button.ok { background: var(--green); }
+  button.warn { background: var(--gold); color: var(--navy); }
+  #ptsBox { display: flex; align-items: center; gap: 8px; color: var(--mist); font-size: 16px; }
+  #pts { width: 64px; font: inherit; font-size: 18px; padding: 10px; border-radius: 10px; border: 2px solid var(--navy-soft); background: var(--navy); color: var(--white); text-align: center; }
+  #keys { grid-column: 1; color: var(--mist); font-size: 14px; margin: 0; }
+
+  /* 점수판 */
+  #side { grid-row: 1 / span 3; grid-column: 2; }
+  @media (max-width: 900px) { #side { grid-row: auto; grid-column: 1; } }
+  #side h2 { margin: 0 0 6px; font-size: 20px; }
+  #count { color: var(--mist); font-size: 15px; margin-bottom: 12px; }
+  #board { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  #board li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; background: var(--navy-soft); padding: 8px 12px; border-radius: 12px; }
+  #board .nm { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  #board .nm span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #566385; flex: none; }
+  .dot.on { background: #4ade80; }
+  #board .sc { font-size: 22px; font-weight: 800; color: var(--gold); min-width: 40px; text-align: right; }
+  .mini { display: flex; gap: 4px; }
+  .mini button { padding: 4px 10px; font-size: 16px; border-radius: 8px; background: var(--navy); }
+  #danger { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+  #danger button { font-size: 14px; padding: 8px 12px; background: transparent; border: 1px solid var(--navy-soft); color: var(--mist); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="configError" hidden>config.js에 Firebase 설정값을 먼저 넣어줘야 해요.</div>
+
+<div class="wrap">
+  <section id="stage" data-state="closed">
+    <div id="stageLabel">버저 닫힘</div>
+    <div id="stageMain">대기 중</div>
+    <div id="stageSub"></div>
+  </section>
+
+  <div id="controls">
+    <button id="btnOpen" class="open">버저 열기</button>
+    <button id="btnCorrect" class="ok" disabled>정답</button>
+    <button id="btnWrong" class="warn" disabled>오답, 다시 열기</button>
+    <button id="btnClose">닫기</button>
+    <label id="ptsBox">정답 점수 <input id="pts" type="number" min="1" value="1"></label>
+  </div>
+  <p id="keys">단축키: 스페이스 버저 열기, Y 정답, N 오답, Esc 닫기</p>
+
+  <aside id="side">
+    <h2>점수판</h2>
+    <div id="count"></div>
+    <ol id="board"></ol>
+    <div id="danger">
+      <button id="btnResetScores">점수 전체 0점으로</button>
+      <button id="btnKickAll">참가자 전부 내보내기</button>
+    </div>
+  </aside>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("여기에") === 0) {
+    $("configError").hidden = false;
+    return;
+  }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  let round = null;
+  let players = {};
+  let prevState = null;
+  let ac = null;
+
+  function beep() {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.value = 880;
+      o.connect(g); g.connect(ac.destination);
+      g.gain.setValueAtTime(0.25, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
+      o.start(); o.stop(ac.currentTime + 0.5);
+    } catch (e) {}
+  }
+  function unlockAudio() {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {}
+  }
+
+  // 라운드 노드가 없으면 초기 생성
+  db.ref("round").on("value", (s) => {
+    if (!s.exists()) { db.ref("round").set({ state: "closed", seq: 0 }); return; }
+    round = s.val();
+    if (round.state === "locked" && prevState !== "locked") beep();
+    prevState = round.state;
+    renderStage();
+  });
+  db.ref("players").on("value", (s) => { players = s.val() || {}; renderBoard(); renderStage(); });
+
+  function renderStage() {
+    const r = round || { state: "closed" };
+    const st = $("stage");
+    st.dataset.state = r.state;
+    const total = Object.keys(players).length;
+    if (r.state === "open") {
+      const ex = r.excluded ? Object.keys(r.excluded).length : 0;
+      $("stageLabel").textContent = "버저 열림";
+      $("stageMain").textContent = "누르세요!";
+      $("stageSub").textContent = ex ? "기회를 쓴 사람 " + ex + "명 제외" : "";
+    } else if (r.state === "locked" && r.winner) {
+      $("stageLabel").textContent = "가장 먼저 누른 사람";
+      $("stageMain").textContent = r.winner.name;
+      $("stageSub").textContent = "";
+    } else {
+      $("stageLabel").textContent = "버저 닫힘";
+      $("stageMain").textContent = "대기 중";
+      $("stageSub").textContent = "";
+    }
+    const locked = r.state === "locked";
+    $("btnCorrect").disabled = !locked;
+    $("btnWrong").disabled = !locked;
+    $("btnOpen").disabled = r.state === "open";
+    $("btnClose").disabled = r.state === "closed";
+    const online = Object.values(players).filter((p) => p.online).length;
+    $("count").textContent = "참가 " + total + "명, 접속 중 " + online + "명";
+  }
+
+  function renderBoard() {
+    const arr = Object.entries(players)
+      .map(([id, p]) => ({ id, name: p.name || "?", score: p.score || 0, online: !!p.online }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ko"));
+    $("board").replaceChildren(...arr.map((p) => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "nm";
+      const dot = document.createElement("i"); dot.className = "dot" + (p.online ? " on" : "");
+      const t = document.createElement("span"); t.className = "t"; t.textContent = p.name;
+      nm.append(dot, t);
+      const sc = document.createElement("div"); sc.className = "sc"; sc.textContent = p.score;
+      const mini = document.createElement("div"); mini.className = "mini";
+      const minus = document.createElement("button"); minus.textContent = "-";
+      const plus = document.createElement("button"); plus.textContent = "+";
+      const del = document.createElement("button"); del.textContent = "x"; del.title = "내보내기";
+      minus.onclick = () => adjust(p.id, -1);
+      plus.onclick = () => adjust(p.id, 1);
+      del.onclick = () => { if (confirm(p.name + " 님을 내보낼까요?")) db.ref("players/" + p.id).remove(); };
+      mini.append(minus, plus, del);
+      li.append(nm, sc, mini);
+      return li;
+    }));
+  }
+
+  function adjust(id, delta) {
+    db.ref("players/" + id + "/score").transaction((s) => (s || 0) + delta);
+  }
+  function pts() { return Math.max(1, parseInt($("pts").value, 10) || 1); }
+  function seq() { return (round && round.seq) || 0; }
+
+  function openBuzzer() {
+    unlockAudio();
+    if (round && round.state === "open") return;
+    db.ref("round").set({ state: "open", seq: seq() + 1 });   // 승자, 제외 목록 초기화
+  }
+  function correct() {
+    if (!round || round.state !== "locked" || !round.winner) return;
+    const w = round.winner;
+    db.ref("players/" + w.id + "/score").transaction((s) => (s || 0) + pts());
+    db.ref("round").set({ state: "closed", seq: seq() });
+  }
+  function wrong() {
+    db.ref("round").transaction((cur) => {
+      if (cur && cur.state === "locked" && cur.winner) {
+        const ex = cur.excluded || {};
+        ex[cur.winner.id] = true;
+        return { state: "open", excluded: ex, seq: cur.seq || 0 };
+      }
+      return;
+    });
+  }
+  function closeBuzzer() { db.ref("round").set({ state: "closed", seq: seq() }); }
+
+  $("btnOpen").onclick = openBuzzer;
+  $("btnCorrect").onclick = correct;
+  $("btnWrong").onclick = wrong;
+  $("btnClose").onclick = closeBuzzer;
+  $("btnResetScores").onclick = () => {
+    if (!confirm("모든 참가자의 점수를 0점으로 되돌릴까요?")) return;
+    const upd = {};
+    Object.keys(players).forEach((id) => { upd["players/" + id + "/score"] = 0; });
+    db.ref().update(upd);
+  };
+  $("btnKickAll").onclick = () => {
+    if (!confirm("참가자 전원을 내보낼까요? 점수도 함께 사라져요.")) return;
+    db.ref("players").remove();
+  };
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    if (e.code === "Space") { e.preventDefault(); openBuzzer(); }
+    else if (e.key === "y" || e.key === "Y") correct();
+    else if (e.key === "n" || e.key === "N") wrong();
+    else if (e.key === "Escape") closeBuzzer();
+  });
+})();
+</script>
+</body>
+</html>
