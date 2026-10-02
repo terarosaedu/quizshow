@@ -68,6 +68,14 @@
   .mini button { padding: 4px 10px; font-size: 16px; border-radius: 8px; background: var(--navy); }
   #danger { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
   #danger button { font-size: 14px; padding: 8px 12px; background: transparent; border: 1px solid var(--navy-soft); color: var(--mist); font-weight: 600; }
+
+  /* 참가 QR */
+  #qrCard { background: var(--white); border-radius: 16px; padding: 10px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: zoom-in; border: 0; width: 100%; }
+  #qrCard img { width: 100%; max-width: 220px; height: auto; image-rendering: pixelated; display: block; }
+  #qrCard span { color: var(--navy); font-size: 14px; font-weight: 700; }
+  #qrOverlay { position: fixed; inset: 0; background: var(--white); z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; cursor: zoom-out; padding: 24px; }
+  #qrOverlay img { width: min(90vh, 90vw); height: auto; image-rendering: pixelated; }
+  #qrOverlay p { margin: 0; color: var(--navy); font-size: 20px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -85,11 +93,13 @@
     <button id="btnCorrect" class="ok" disabled>정답</button>
     <button id="btnWrong" class="warn" disabled>오답, 다시 열기</button>
     <button id="btnClose">닫기</button>
+    <button id="btnQr">QR 크게 보기</button>
     <label id="ptsBox">정답 점수 <input id="pts" type="number" min="1" value="1"></label>
   </div>
-  <p id="keys">단축키: 스페이스 버저 열기, Y 정답, N 오답, Esc 닫기</p>
+  <p id="keys">단축키: 스페이스 버저 열기, Y 정답, N 오답, Esc 닫기, Q QR 보기</p>
 
   <aside id="side">
+    <button id="qrCard" title="클릭하면 크게 보기"><img src="qr.png" alt="참가 QR 코드"><span>참가 QR (클릭하면 전체 화면)</span></button>
     <h2>점수판</h2>
     <div id="count"></div>
     <ol id="board"></ol>
@@ -99,6 +109,8 @@
     </div>
   </aside>
 </div>
+
+<div id="qrOverlay" hidden><img src="qr.png" alt="참가 QR 코드"><p>QR을 스캔해서 입장하세요 (아무 곳이나 누르면 닫혀요)</p></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -240,8 +252,17 @@
     db.ref("players").remove();
   };
 
+  function toggleQr(show) {
+    $("qrOverlay").hidden = !show;
+  }
+  $("btnQr").onclick = () => toggleQr(true);
+  $("qrCard").onclick = () => toggleQr(true);
+  $("qrOverlay").onclick = () => toggleQr(false);
+
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT") return;
+    if (e.key === "Escape" && !$("qrOverlay").hidden) { toggleQr(false); return; }
+    if (e.key === "q" || e.key === "Q") { toggleQr($("qrOverlay").hidden); return; }
     if (e.code === "Space") { e.preventDefault(); openBuzzer(); }
     else if (e.key === "y" || e.key === "Y") correct();
     else if (e.key === "n" || e.key === "N") wrong();
