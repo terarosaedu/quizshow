@@ -70,9 +70,9 @@
   #danger button { font-size: 14px; padding: 8px 12px; background: transparent; border: 1px solid var(--navy-soft); color: var(--mist); font-weight: 600; }
 
   /* 참가 QR */
-  #qrCard { background: var(--white); border-radius: 16px; padding: 10px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: zoom-in; border: 0; width: 100%; }
-  #qrCard img { width: 100%; max-width: 220px; height: auto; image-rendering: pixelated; display: block; }
-  #qrCard span { color: var(--navy); font-size: 14px; font-weight: 700; }
+  #qrCard { background: var(--white); border-radius: 12px; padding: 6px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: zoom-in; border: 0; width: 120px; }
+  #qrCard img { width: 100%; height: auto; image-rendering: pixelated; display: block; }
+  #qrCard span { color: var(--navy); font-size: 12px; font-weight: 700; }
   #qrOverlay { position: fixed; inset: 0; background: var(--white); z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; cursor: zoom-out; padding: 24px; }
   #qrOverlay img { width: min(90vh, 90vw); height: auto; image-rendering: pixelated; }
   #qrOverlay p { margin: 0; color: var(--navy); font-size: 20px; font-weight: 700; }
@@ -99,7 +99,7 @@
   <p id="keys">단축키: 스페이스 버저 열기, Y 정답, N 오답, Esc 닫기, Q QR 보기</p>
 
   <aside id="side">
-    <button id="qrCard" title="클릭하면 크게 보기"><img src="qr.png" alt="참가 QR 코드"><span>참가 QR (클릭하면 전체 화면)</span></button>
+    <button id="qrCard" title="클릭하면 크게 보기"><img src="qr.png" alt="참가 QR 코드"><span>클릭하면 크게</span></button>
     <h2>점수판</h2>
     <div id="count"></div>
     <ol id="board"></ol>
