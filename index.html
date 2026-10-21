@@ -3,101 +3,138 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>골든벨 버저</title>
+<title>골든벨 퀴즈</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root {
-    --navy: #1b2a4a;
-    --navy-soft: #2c3e66;
-    --gold: #f5b82e;
-    --red: #d7263d;
-    --green: #1e9e63;
-    --mist: #aeb9d3;
-    --white: #ffffff;
+    --bg0: #0a1020;
+    --bg1: #111c36;
+    --ink: #eef2fb;
+    --ink-dim: #9aa7c4;
+    --card: rgba(255, 255, 255, 0.06);
+    --line: rgba(255, 255, 255, 0.1);
+    --blue-a: #7aa2ff;
+    --blue-b: #4f7cff;
+    --coral-a: #ff8a93;
+    --coral-b: #f0435a;
+    --mint-a: #55e0a4;
+    --mint-b: #1fb97a;
+    --amber: #ffc857;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
+  html, body { min-height: 100%; margin: 0; }
   body {
-    background: var(--navy);
-    color: var(--white);
+    color: var(--ink);
     font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background:
+      radial-gradient(700px 420px at 12% -8%, rgba(79, 124, 255, 0.25), transparent 62%),
+      radial-gradient(600px 420px at 100% 105%, rgba(240, 67, 90, 0.16), transparent 62%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+    background-attachment: fixed;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   [hidden] { display: none !important; }
-  .screen { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 18px; }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 22px 20px 32px; gap: 20px; max-width: 480px; margin: 0 auto; }
+  .screen.center { justify-content: center; }
 
-  #offline, #configError {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-    background: var(--red); color: var(--white); text-align: center;
-    padding: 10px; font-weight: 600; font-size: 15px;
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+  #offline {
+    position: fixed; top: calc(env(safe-area-inset-top) + 10px); left: 50%; transform: translateX(-50%);
+    z-index: 10; background: rgba(240, 67, 90, 0.95); color: #fff; padding: 9px 16px; border-radius: 999px;
+    font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); white-space: nowrap;
   }
+  #configError { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--bg0); padding: 24px; text-align: center; font-weight: 600; line-height: 1.6; }
 
-  /* 입장 화면 */
-  #join { justify-content: center; max-width: 420px; margin: 0 auto; }
-  #join h1 { font-size: 34px; margin: 0; color: var(--gold); letter-spacing: -0.02em; }
-  #join p { margin: 0; color: var(--mist); }
-  #name {
-    width: 100%; font: inherit; font-size: 22px; padding: 16px; border-radius: 14px;
-    border: 2px solid var(--navy-soft); background: var(--navy-soft); color: var(--white); text-align: center;
+  /* 입장 */
+  .gate { width: 100%; padding: 34px 26px 26px; display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.18em; color: var(--blue-a); }
+  .gate h1 { margin: 0; font-size: 32px; letter-spacing: -0.03em; }
+  .gate .sub { margin: 0 0 10px; color: var(--ink-dim); font-size: 15px; }
+  .field {
+    width: 100%; font: inherit; font-size: 18px; padding: 15px 16px; border-radius: 14px;
+    border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: var(--ink);
+    transition: border-color 0.15s, background 0.15s;
   }
-  #name:focus { outline: none; border-color: var(--gold); }
-  #enter {
-    width: 100%; font: inherit; font-size: 20px; font-weight: 700; padding: 16px;
-    border: 0; border-radius: 14px; background: var(--gold); color: var(--navy);
+  .field::placeholder { color: #6d7a99; }
+  .field:focus { outline: none; border-color: var(--blue-a); background: rgba(122, 162, 255, 0.08); }
+  #err { min-height: 20px; color: var(--coral-a); font-size: 14px; font-weight: 600; }
+  .btn {
+    font: inherit; font-size: 17px; font-weight: 700; border: 0; border-radius: 14px; padding: 15px 18px; color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, var(--blue-a), var(--blue-b));
+    box-shadow: 0 10px 24px -8px rgba(79, 124, 255, 0.7);
   }
+  .btn:active { transform: translateY(1px); }
 
-  /* 플레이 화면 */
-  #play { max-width: 520px; margin: 0 auto; }
-  #bar { width: 100%; display: flex; justify-content: space-between; align-items: baseline; color: var(--mist); font-size: 16px; }
-  #who { color: var(--white); font-weight: 700; font-size: 20px; }
-  #myScore b { color: var(--gold); font-size: 22px; }
-  #msg { min-height: 28px; font-size: 19px; font-weight: 600; text-align: center; }
+  /* 플레이 */
+  #bar { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #who { padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 17px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score { display: flex; align-items: baseline; gap: 8px; color: var(--ink-dim); font-size: 14px; }
+  .score b { color: var(--amber); font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #msg { min-height: 26px; font-size: 18px; font-weight: 600; text-align: center; color: var(--ink); }
 
+  .buzzWrap { position: relative; width: min(76vw, 42vh); height: min(76vw, 42vh); margin: 8px 0; }
   #buzz {
-    width: min(76vw, 44vh); height: min(76vw, 44vh);
-    border-radius: 50%; border: 0; font: inherit; font-size: 40px; font-weight: 800;
-    letter-spacing: -0.02em; touch-action: manipulation; user-select: none; -webkit-user-select: none;
-    transition: transform 0.06s, background 0.15s;
-    box-shadow: 0 10px 0 rgba(0, 0, 0, 0.28);
+    --c1: #3a4868; --c2: #27324e; --glow: rgba(0, 0, 0, 0.4); --fg: #aab6d3;
+    position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%; border: 0;
+    font: inherit; font-size: clamp(30px, 9vw, 42px); font-weight: 800; letter-spacing: -0.02em; color: var(--fg);
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.28), transparent 46%),
+      linear-gradient(150deg, var(--c1), var(--c2));
+    box-shadow: 0 22px 44px -12px var(--glow), inset 0 -10px 22px rgba(0, 0, 0, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.22);
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    transition: transform 0.07s, box-shadow 0.07s, background 0.2s;
   }
-  #buzz[data-state="closed"] { background: var(--navy-soft); color: var(--mist); box-shadow: 0 10px 0 rgba(0,0,0,0.2); }
-  #buzz[data-state="open"]   { background: var(--red); color: var(--white); }
-  #buzz[data-state="open"]:active { transform: translateY(8px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.28); }
-  #buzz[data-state="win"]    { background: var(--green); color: var(--white); }
-  #buzz[data-state="lost"]   { background: var(--gold); color: var(--navy); }
-  #buzz[data-state="out"]    { background: var(--navy-soft); color: var(--mist); }
+  #buzz[data-state="open"] { --c1: var(--coral-a); --c2: var(--coral-b); --glow: rgba(240, 67, 90, 0.75); --fg: #fff; }
+  #buzz[data-state="open"]:active { transform: scale(0.96); box-shadow: 0 8px 20px -8px var(--glow), inset 0 -6px 14px rgba(0, 0, 0, 0.25); }
+  #buzz[data-state="win"]  { --c1: var(--mint-a); --c2: var(--mint-b); --glow: rgba(31, 185, 122, 0.7); --fg: #06281a; }
+  #buzz[data-state="lost"] { --c1: #34405f; --c2: #26304a; --fg: #c3cce2; }
+  .ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--coral-a); opacity: 0; pointer-events: none; }
+  #buzz[data-state="open"] ~ .ring { animation: pulse 1.6s ease-out infinite; }
+  @keyframes pulse { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.22); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { #buzz[data-state="open"] ~ .ring { animation: none; } }
 
-  #boardWrap { width: 100%; margin-top: 6px; }
-  #boardWrap h2 { font-size: 15px; font-weight: 600; color: var(--mist); margin: 0 0 8px; }
+  #boardWrap { width: 100%; padding: 18px 16px 14px; }
+  #boardWrap h2 { margin: 0 0 10px 4px; font-size: 14px; font-weight: 700; color: var(--ink-dim); letter-spacing: 0.04em; }
   #board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-  #board li { display: flex; justify-content: space-between; background: var(--navy-soft); padding: 9px 14px; border-radius: 10px; font-size: 16px; }
-  #board li.me { outline: 2px solid var(--gold); }
-  #board li span:last-child { font-weight: 700; color: var(--gold); }
+  #board li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); font-size: 16px; }
+  #board li.me { background: rgba(122, 162, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(122, 162, 255, 0.5); }
+  #board .rk { color: var(--ink-dim); font-weight: 700; font-variant-numeric: tabular-nums; }
+  #board li:nth-child(1) .rk { color: var(--amber); }
+  #board .pt { font-weight: 800; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
 
-<div id="configError" hidden>config.js에 Firebase 설정값을 먼저 넣어줘야 해요.</div>
+<div id="configError" hidden>config.js에 Firebase 설정값과 PLAYER_PASSWORD가 있어야 해요.</div>
 <div id="offline" hidden>연결이 끊겼어요. 다시 연결하는 중...</div>
 
-<main id="join" class="screen">
-  <h1>골든벨 퀴즈</h1>
-  <p>이름을 입력하고 입장하세요</p>
-  <input id="name" maxlength="12" placeholder="이름" autocomplete="off" enterkeyhint="go">
-  <button id="enter">입장</button>
+<main id="join" class="screen center">
+  <div class="card gate">
+    <div class="eyebrow">QUIZ SHOW</div>
+    <h1>골든벨 퀴즈</h1>
+    <p class="sub">이름과 비밀번호를 입력하고 입장하세요</p>
+    <input id="name" class="field" maxlength="12" placeholder="이름" autocomplete="off" enterkeyhint="next">
+    <input id="pw" class="field" type="password" placeholder="비밀번호" autocomplete="off" enterkeyhint="go">
+    <div id="err" role="alert"></div>
+    <button id="enter" class="btn">입장</button>
+  </div>
 </main>
 
 <main id="play" class="screen" hidden>
   <div id="bar">
-    <span id="who"></span>
-    <span id="myScore">내 점수 <b>0</b></span>
+    <div id="who" class="card"></div>
+    <div class="score">내 점수 <b id="scoreNum">0</b></div>
   </div>
   <div id="msg"></div>
-  <button id="buzz" data-state="closed" disabled>대기 중</button>
-  <div id="boardWrap">
+  <div class="buzzWrap">
+    <button id="buzz" data-state="closed" disabled>대기 중</button>
+    <i class="ring"></i>
+  </div>
+  <section id="boardWrap" class="card">
     <h2>현재 순위</h2>
     <ol id="board"></ol>
-  </div>
+  </section>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -107,25 +144,22 @@
 (function () {
   const $ = (id) => document.getElementById(id);
 
-  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("여기에") === 0) {
-    $("configError").hidden = false;
-    return;
-  }
+  const cfgOk = typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("여기에") !== 0;
+  const pwOk = typeof PLAYER_PASSWORD === "string" && PLAYER_PASSWORD.length > 0;
+  if (!cfgOk || !pwOk) { $("configError").hidden = false; return; }
 
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.database();
 
-  // 기기마다 고유 id를 만들어 새로고침해도 같은 사람으로 인식
   let uid = localStorage.getItem("qb_uid");
   if (!uid) {
     uid = "p" + Math.random().toString(36).slice(2, 10);
     localStorage.setItem("qb_uid", uid);
   }
-  let me = null;      // {id, name}
+  let me = null;
   let round = null;
   let players = {};
 
-  // 연결 상태 + 접속 표시
   db.ref(".info/connected").on("value", (s) => {
     const on = s.val() === true;
     $("offline").hidden = on;
@@ -150,23 +184,30 @@
     render();
   }
 
-  $("enter").addEventListener("click", () => {
+  function tryJoin() {
     const name = $("name").value.trim();
-    if (name) join(name);
-  });
-  $("name").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") $("enter").click();
-  });
+    const pw = $("pw").value;
+    if (!name) { $("err").textContent = "이름을 입력해주세요"; return; }
+    if (pw !== PLAYER_PASSWORD) { $("err").textContent = "비밀번호가 맞지 않아요"; $("pw").value = ""; return; }
+    $("err").textContent = "";
+    localStorage.setItem("qb_pw", pw);
+    join(name);
+  }
+  $("enter").addEventListener("click", tryJoin);
+  $("name").addEventListener("keydown", (e) => { if (e.key === "Enter") $("pw").focus(); });
+  $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") tryJoin(); });
+
   const saved = localStorage.getItem("qb_name");
   if (saved) $("name").value = saved;
 
-  // 라운드 상태 구독
   db.ref("round").on("value", (s) => { round = s.val(); render(); });
   db.ref("players").on("value", (s) => {
     players = s.val() || {};
-    // 진행자가 내보낸 경우 입장 화면으로 복귀
+    // 진행자가 내보내면 비밀번호를 다시 입력해야 입장 가능
     if (me && !players[me.id]) {
       me = null;
+      localStorage.removeItem("qb_pw");
+      $("pw").value = "";
       $("play").hidden = true;
       $("join").hidden = false;
       return;
@@ -180,7 +221,7 @@
     const excluded = r.excluded && r.excluded[me.id];
     let state, label, text;
     if (r.state === "open") {
-      if (excluded) { state = "out"; label = "기회 소진"; text = "이번 문제는 이미 답변했어요"; }
+      if (excluded) { state = "lost"; label = "기회 소진"; text = "이번 문제는 이미 답변했어요"; }
       else { state = "open"; label = "누르기!"; text = "문제를 듣고 먼저 누르세요"; }
     } else if (r.state === "locked" && r.winner) {
       if (r.winner.id === me.id) { state = "win"; label = "내 차례!"; text = "답을 말해주세요"; }
@@ -194,28 +235,23 @@
     b.disabled = state !== "open";
     $("msg").textContent = text;
 
-    const mine = (players[me.id] && players[me.id].score) || 0;
-    $("myScore").innerHTML = "";
-    $("myScore").append("내 점수 ");
-    const bold = document.createElement("b");
-    bold.textContent = mine;
-    $("myScore").append(bold);
+    $("scoreNum").textContent = (players[me.id] && players[me.id].score) || 0;
 
     const arr = Object.entries(players)
       .map(([id, p]) => ({ id, name: p.name || "?", score: p.score || 0 }))
       .sort((a, c) => c.score - a.score || a.name.localeCompare(c.name, "ko"))
       .slice(0, 5);
-    $("board").replaceChildren(...arr.map((p) => {
+    $("board").replaceChildren(...arr.map((p, i) => {
       const li = document.createElement("li");
       if (p.id === me.id) li.className = "me";
+      const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = i + 1;
       const n = document.createElement("span"); n.textContent = p.name;
-      const sc = document.createElement("span"); sc.textContent = p.score + "점";
-      li.append(n, sc);
+      const pt = document.createElement("span"); pt.className = "pt"; pt.textContent = p.score + "점";
+      li.append(rk, n, pt);
       return li;
     }));
   }
 
-  // 버저: 서버에서 가장 먼저 도착한 요청 1건만 성공
   function buzz() {
     if (!me) return;
     if (navigator.vibrate) navigator.vibrate(30);
@@ -226,17 +262,15 @@
         cur.lockedAt = firebase.database.ServerValue.TIMESTAMP;
         return cur;
       }
-      return; // 이미 마감됐으면 취소
+      return;
     }, function () {}, false);
   }
   $("buzz").addEventListener("pointerdown", (e) => {
     if ($("buzz").dataset.state === "open") { e.preventDefault(); buzz(); }
   });
 
-  // 저장된 이름이 있으면 자동 입장
-  if (saved) {
-    db.ref("players/" + uid).once("value").then((s) => { if (s.exists()) join(saved); });
-  }
+  // 비밀번호를 이미 통과한 기기는 자동 입장
+  if (saved && localStorage.getItem("qb_pw") === PLAYER_PASSWORD) join(saved);
 })();
 </script>
 </body>
