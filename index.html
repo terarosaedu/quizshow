@@ -139,14 +139,21 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=3"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
 
   const cfgOk = typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("여기에") !== 0;
   const pwOk = typeof PLAYER_PASSWORD === "string" && PLAYER_PASSWORD.length > 0;
-  if (!cfgOk || !pwOk) { $("configError").hidden = false; return; }
+  if (!cfgOk || !pwOk) {
+    const missing = [];
+    if (!cfgOk) missing.push("Firebase 설정값");
+    if (!pwOk) missing.push("PLAYER_PASSWORD");
+    $("configError").textContent = "config.js에서 " + missing.join(", ") + " 항목을 찾지 못했어요. config.js를 최신 파일로 다시 올렸는지 확인하고, 새로고침(Ctrl+Shift+R)해 주세요.";
+    $("configError").hidden = false;
+    return;
+  }
 
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.database();
